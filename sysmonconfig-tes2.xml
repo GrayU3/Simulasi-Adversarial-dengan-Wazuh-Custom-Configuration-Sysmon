@@ -1,0 +1,170 @@
+<!-- Overlay detection per EventID with MITRE mapping -->
+<Sysmon schemaversion="4.90">
+  <EventFiltering>
+    <!-- Noise Exclusions -->
+    <RuleGroup name="Common - Noise Exclusions" groupRelation="or">
+      <ProcessCreate onmatch="exclude">
+        <Image condition="is">C:\Windows\System32\svchost.exe</Image>                <!-- generic service host (noisy if not excluded) -->
+        <Image condition="is">C:\Windows\System32\services.exe</Image>                <!-- Service Control Manager -->
+        <Image condition="is">C:\Windows\System32\lsass.exe</Image>                <!-- Local Security Authority (auth stuff) -->
+        <Image condition="is">C:\Windows\System32\wininit.exe</Image>                <!-- Windows init (early boot) -->
+        <Image condition="is">C:\Windows\System32\winlogon.exe</Image>                <!-- Winlogon (interactive logons) -->
+        <Image condition="contains">\\Installer\\</Image>
+      </ProcessCreate>
+
+      <FileCreate onmatch="exclude">
+        <TargetFilename condition="begin with">C:\Program Files\</TargetFilename>                <!-- vendor installs: usually vendor noise -->
+        <TargetFilename condition="begin with">C:\Program Files (x86)\</TargetFilename>                <!-- 32-bit vendor installs -->
+        <TargetFilename condition="begin with">C:\ProgramData\Package Cache\</TargetFilename>                <!-- MSI/installer cache noise -->
+      </FileCreate>
+    </RuleGroup>
+
+    <!-- Event ID 1: ProcessCreate -->
+    <RuleGroup name="technique_id=T1059.007;technique_name=Command and Scripting Interpreter: JavaScript" groupRelation="or">
+      <ProcessCreate onmatch="include">
+        <Image condition="contains">cscript.exe</Image>                <!-- cscript.exe: CLI host for .js/.vbs -->
+        <Image condition="is">wscript.exe</Image>                <!-- wscript.exe: GUI host for .js/.vbs -->
+        <CommandLine condition="contains any">.js;.jse;.vbs;.wsc;.wsf;tmp</CommandLine>                <!-- encoded JS file variant -->
+        <CommandLine condition="contains">T1059.007.out.txt</CommandLine>                <!-- detection artifact -->
+      </ProcessCreate>
+    </RuleGroup>
+
+    <RuleGroup name="technique_id=T1547.001;technique_name=Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder" groupRelation="or">
+      <ProcessCreate onmatch="include">
+        <Image condition="is">cmd.exe</Image>                <!-- cmd.exe launched at logon — suspicious context -->
+        <Image condition="is">C:\Windows\explorer.exe</Image>                <!-- explorer: normal shell start -->
+        <CommandLine condition="contains any">.vbs;.bat;.lnk</CommandLine>                <!-- vbs launched via startup | bat launched via startup | lnk shortcut executed from Startup-->
+
+        <CommandLine condition="contains">HKCR\CLSID\{645FF040-5081-101B-9F08-00AA002F954E}\shell\open\command</CommandLine>
+        <CommandLine condition="contains any">HKCR:\CLSID\{645FF040-5081-101B-9F08-00AA002F954E}\shell\open\command</CommandLine>
+
+        <CommandLine condition="contains any">HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run;/V;Atomic Red Team;/D</CommandLine>
+        <CommandLine condition="contains any">HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnceEx\0001\Depend;/v;1;/d</CommandLine>
+
+        <CommandLine condition="contains">\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\batstartup.bat</CommandLine>
+        <CommandLine condition="contains">\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\batstartup.bat</CommandLine>
+        <CommandLine condition="contains">batstartup.bat</CommandLine>
+
+        <CommandLine condition="contains any">HKCU:\Software\Microsoft\Windows\CurrentVersion\Run;Atomic Red Team</CommandLine>
+        <CommandLine condition="contains any">HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnceEx\0001\Depend</CommandLine>
+
+        <CommandLine condition="contains any">HKLM\Software\Microsoft\Windows\CurrentVersion\RunOnce</CommandLine>
+        <CommandLine condition="contains">Discovery.bat</CommandLine>
+        <CommandLine condition="contains">NextRun</CommandLine>
+        <CommandLine condition="contains">DownloadString</CommandLine>
+
+        <Image condition="end with">powershell.exe</Image>
+
+        <CommandLine condition="contains">CreateShortcut</CommandLine>
+        <CommandLine condition="contains any">CreateShortcut;$home\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup</CommandLine>
+        <CommandLine condition="contains any">New-Object;ComObject;WScript.Shell</CommandLine>
+        <CommandLine condition="contains">.lnk</CommandLine>
+        
+
+        <Image condition="contains">cscript.exe</Image>
+
+        <CommandLine condition="contains">\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\</CommandLine>
+        <CommandLine condition="contains">\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\</CommandLine>
+        <CommandLine condition="contains any">vbsstartup.vbs;jsestartup.jse</CommandLine>
+        <CommandLine condition="contains">/E:Jscript</CommandLine>
+
+        <CommandLine condition="contains any">HKCU:\Software\Microsoft\Windows\CurrentVersion\Run</CommandLine>
+        <CommandLine condition="contains">socks5_powershell</CommandLine>
+        <CommandLine condition="contains">-ExecutionPolicy Bypass</CommandLine>
+        <CommandLine condition="contains">-File</CommandLine>
+
+        <CommandLine condition="contains">HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders</CommandLine>
+        <CommandLine condition="contains">HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders</CommandLine>
+        <CommandLine condition="contains any">Common Startup</CommandLine>
+
+        <CommandLine condition="contains any">HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer</CommandLine>
+        <CommandLine condition="contains any">HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run</CommandLine>
+        <CommandLine condition="contains any">HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon</CommandLine>
+
+        <Image condition="end with">secedit</Image>
+        <CommandLine condition="contains any">secedit_db;configure;import</CommandLine>
+
+        <CommandLine condition="contains">HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager</CommandLine>
+
+        <Image condition="end with">iexplore.exe</Image>
+        <CommandLine condition="contains">HKLM\System\CurrentControlSet\Control\BootVerificationProgram</CommandLine>
+
+        <CommandLine condition="contains">HKEY_CLASSES_ROOT\Directory\Background\shell\Size Modify\command</CommandLine>
+
+        <!-- atomic artifacts -->
+        <CommandLine condition="contains">AtomicRedTeam.exe</CommandLine>
+        <CommandLine condition="contains">AtomicRedTeam.dll</CommandLine>
+        <CommandLine condition="contains">Atomic Red Team</CommandLine>
+      </ProcessCreate>
+    </RuleGroup>
+
+    <RuleGroup name="technique_id=T1053.005;technique_name=Scheduled Task/Job: Scheduled Task" groupRelation="or">
+      <ProcessCreate onmatch="include">
+        <Image condition="is">C:\Windows\System32\schtasks.exe</Image>                <!-- schtasks.exe doing /Create — suspicious if unexpected -->
+        <Image condition="contains">powershell.exe</Image>                <!-- powershell used to register tasks -->
+        <Image condition="contains">cmd.exe</Image>                <!-- cmd used to register tasks -->
+        <CommandLine condition="contains">/Create</CommandLine>                <!-- common flag when creating tasks -->
+        <CommandLine condition="contains">Register-ScheduledTask</CommandLine>                <!-- PS cmdlet to register tasks -->
+        <CommandLine condition="contains">RegisterByXml</CommandLine>                <!-- XML-based task registration -->
+      </ProcessCreate>
+    </RuleGroup>
+
+    <!-- Event ID 11: FileCreate -->
+    <RuleGroup name="technique_id=T1059.007;technique_name=Command and Scripting Interpreter: JavaScript" groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="contains">T1059.007.out.txt</TargetFilename>                <!-- tracer/temp output file -->
+        <TargetFilename condition="end with">.jse</TargetFilename>                <!-- encoded JS file appears on disk -->
+        <TargetFilename condition="end with">.js</TargetFilename>                <!-- JS file created on filesystem -->
+        <!-- Contoh spesifik di direktori %TEMP% -->
+        <!-- <TargetFilename condition="contains">\Temp\</TargetFilename> -->
+        <!-- <TargetFilename condition="contains">\Temp\T1059.007.out.txt</TargetFilename> -->
+      </FileCreate>
+    </RuleGroup>
+
+    <RuleGroup name="technique_id=T1547.001;technique_name=Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder" groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="end with">.vbs</TargetFilename>                <!-- VBS script created -->
+        <TargetFilename condition="end with">AtomicRedTeam.dll</TargetFilename>
+        <TargetFilename condition="contains">\AppData\</TargetFilename>
+        <TargetFilename condition="contains">AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup</TargetFilename>
+        <TargetFilename condition="contains">ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp</TargetFilename>
+        <TargetFilename condition="end with">.lnk</TargetFilename>
+        <TargetFilename condition="end with">.bat</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+
+    <RuleGroup name="technique_id=T1053.005;technique_name=Scheduled Task/Job: Scheduled Task" groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="begin with">C:\Windows\System32\Tasks</TargetFilename>                <!-- task XMLs dropped here — persistence via Scheduled Task -->
+        <TargetFilename condition="end with">.xml</TargetFilename>                <!-- new task XML created -->
+      </FileCreate>
+    </RuleGroup>
+
+    <!-- Event ID 12/13: RegistryEvent -->
+    <RuleGroup name="technique_id=T1547.001;technique_name=Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <TargetObject condition="contains">RunOnceEx\0001\Depend</TargetObject>                <!-- RunOnceEx opportunistic entries -->
+        <TargetObject condition="contains">CurrentVersion\Run</TargetObject>                <!-- HKCU/HKLM Run keys — classic persistence -->
+        <TargetObject condition="contains">CurrentVersion\RunOnce</TargetObject>                <!-- one-time run keys -->
+        <TargetObject condition="contains">Policies\Explorer\Run</TargetObject>                <!-- policy-based run entries -->
+        <TargetObject condition="contains">Winlogon\Userinit</TargetObject>                <!-- userinit hijack vector -->
+        <TargetObject condition="contains">Winlogon\Shell</TargetObject>                <!-- shell replacements — high-risk -->
+        <TargetObject condition="contains">HKCR\CLSID\{645FF040-5081-101B-9F08-00AA002F954E}\shell\open\command</TargetObject>
+        <TargetObject condition="contains">mytemplate.db</TargetObject>
+        <TargetObject condition="contains">regtemplate.ini</TargetObject>
+        <TargetObject condition="contains">iexplore.exe</TargetObject>
+        <TargetObject condition="contains">HKLM\System\CurrentControlSet\Control\BootVerificationProgram</TargetObject>
+        <TargetObject condition="contains">HKEY_CLASSES_ROOT\Directory\Background\shell\Size Modify\command</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+
+    <RuleGroup name="technique_id=T1053.005;technique_name=Scheduled Task/Job: Scheduled Task" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <TargetObject condition="contains">Schedule\TaskCache\Tree</TargetObject>                <!-- TaskCache tree changes -->
+        <TargetObject condition="contains">SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree</TargetObject>                <!-- full TaskCache path -->
+        <TargetObject condition="contains">Software\Classes\mscfile\shell\open\command</TargetObject>                <!-- mscfile COM/handler hijack -->
+        <TargetObject condition="contains">SOFTWARE\ATOMIC-T1053.005</TargetObject>                <!-- internal marker/example key (tune for env) -->
+      </RegistryEvent>
+    </RuleGroup>
+  </EventFiltering>
+</Sysmon>

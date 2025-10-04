@@ -1,0 +1,93 @@
+<!-- ================== Sysmon Custom ATT&CK Rules ================== -->
+<group name="sysmon_custom">
+
+  <!-- ================== T1059.007 ================== -->
+  <!-- Command and Scripting Interpreter: JavaScript -->
+  <rule id="61701" level="12">
+    <if_sid>61603</if_sid>    <!-- Sysmon ProcessCreate -->
+    <field name="win.eventdata.image" type="pcre2">(?i)(cscript\.exe|wscript\.exe)</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\.(js|jse|vbs|wsc|wsf|tmp)\b</field>
+    <description>Suspicious script execution - possible T1059.007 (cscript/wscript with script extension)</description>
+    <mitre>
+      <id>T1059.007</id>
+    </mitre>
+    <group>execution,sysmon_t1059_007</group>
+  </rule>
+
+  <rule id="61703" level="8">
+    <if_sid>61611</if_sid>    <!-- Sysmon FileCreate -->
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(js|jse)$</field>
+    <description>Suspicious script file created - possible T1059.007</description>
+    <mitre>
+      <id>T1059.007</id>
+    </mitre>
+    <group>execution,sysmon_t1059_007</group>
+  </rule>
+
+
+  <!-- ================== T1547.001 ================== -->
+  <!-- Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder -->
+
+  <rule id="61710" level="12">
+    <if_sid>61613</if_sid>    <!-- Sysmon RegistryEvent -->
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)\\Software\\Microsoft\\Windows\\CurrentVersion\\Run</field>
+    <description>Persistence via Registry Run key - possible T1547.001</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,sysmon_t1547_001</group>
+  </rule>
+
+  <rule id="61711" level="12">
+    <if_sid>61613</if_sid>    <!-- Sysmon RegistryEvent -->
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce</field>
+    <description>Persistence via Registry RunOnce key - possible T1547.001</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,sysmon_t1547_001</group>
+  </rule>
+
+  <rule id="61712" level="12">
+    <if_sid>61603</if_sid>    <!-- Sysmon ProcessCreate -->
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\</field>
+    <description>Persistence via Startup Folder - possible T1547.001</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,sysmon_t1547_001</group>
+  </rule>
+
+  <rule id="61713" level="10">
+    <if_sid>61611</if_sid>    <!-- Sysmon FileCreate -->
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\(Start Menu|StartUp)\\.*\.(lnk|bat|vbs)$</field>
+    <description>Suspicious file created in Startup folder - possible T1547.001</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,sysmon_t1547_001</group>
+  </rule>
+
+  <rule id="61720" level="14">
+    <if_sid>61613</if_sid>    <!-- Sysmon RegistryEvent -->
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)HKCR\\CLSID\\\{645FF040-5081-101B-9F08-00AA002F954E\}\\shell\\open\\command</field>
+    <field name="win.eventdata.detail" type="pcre2">(?i)(calc\.exe|\\|:)</field>
+    <description>Persistence via Recycle Bin CLSID shell\open\command modification — possible persistence / hijack</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,sysmon_recyclebin_clsid,sysmon_t1547_001</group>
+  </rule>
+
+  <rule id="61730" level="14">
+    <if_sid>61613</if_sid>    <!-- Sysmon RegistryEvent -->
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run</field>
+    <field name="win.eventdata.valueName" type="pcre2">(?i)^socks5_powershell$</field>
+    <description>Persistence via Run key `socks5_powershell` created/modified — possible SystemBC persistence (Atomic Test #9)</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,sysmon_runkey_systembc,sysmon_t1547_001</group>
+  </rule>
+
+</group>
